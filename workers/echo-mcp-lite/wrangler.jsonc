@@ -1,0 +1,24 @@
+// Echo MCP server, dependency-free edition (optional): same tools and the same
+// Entra Agent ID checks as workers/echo-mcp, without the Agents SDK / MCP SDK.
+// Use it if your package mirror lacks @modelcontextprotocol/server or
+// @cloudflare/workers-oauth-provider.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "agentid-cf-echo-mcp-lite",
+  "main": "../../src/echo-mcp-lite/index.ts",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true },
+  // "ratelimits": [
+  //   { "name": "AGENT_RATE_LIMITER", "namespace_id": "4712", "simple": { "limit": 60, "period": 60 } }
+  // ],
+  "vars": {
+    "TENANT_ID": "00000000-0000-0000-0000-000000000000",
+    "ECHO_APP_ID": "00000000-0000-0000-0000-000000000000",
+    "ECHO_REQUIRED_SCOPE": "Echo.Read",
+    "ECHO_REQUIRED_ROLE": "Echo.Read.All",
+    "REQUIRE_AGENT_CALLER": "true",
+    "ALLOWED_CALLER_FLOWS": "",
+    "ALLOWED_BLUEPRINT_IDS": "",
+    "ALLOWED_AGENT_IDS": ""
+  }
+}

@@ -1,0 +1,4 @@
+# Copy to .dev.vars (same folder) for `npm run dev:interactive`. Never commit .dev.vars.
+# The cert script writes ready-to-paste lines to certs/<name>/<name>.dev.vars
+BLUEPRINT_CERT_PEM="-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----"
+BLUEPRINT_KEY_PEM="-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----"

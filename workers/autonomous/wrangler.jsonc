@@ -1,0 +1,59 @@
+// Autonomous agent: runs on a schedule and calls an MCP server with its own identity
+// (its agent user via user_fic, or app-only).
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "agentid-cf-autonomous",
+  "main": "../../src/autonomous/index.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  "durable_objects": {
+    "bindings": [{ "name": "AUTONOMOUS_AGENT", "class_name": "AutonomousAgent" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AutonomousAgent"] }],
+
+  // Manual only (default): the job runs when an operator calls POST /run
+  // (npm run autonomous:run). To also run it on a schedule, add cron expressions (UTC),
+  // e.g. ["0 7 * * *"] for 07:00 daily. Keep the empty list rather than deleting the key:
+  // on deploy, [] removes existing schedules, a missing key leaves them in place.
+  "triggers": { "crons": [] },
+
+  // Workers AI runs JOB_PROMPT. Without it, set JOB_TOOL / JOB_TOOL_ARGUMENTS instead.
+  "ai": { "binding": "AI" },
+
+  // Optional: call an MCP server Worker of this account over a service binding (see interactive).
+  // "services": [{ "binding": "MCP_SERVICE", "service": "agentid-cf-echo-mcp" }],
+
+  // Local test of ADMIN_AUTH=access (wrangler dev simulates ctx.access; remove for production):
+  // "access": { "dev": { "aud": "<ACCESS_AUD>", "identity": { "email": "operator@contoso.com" } } },
+
+  "vars": {
+    "TENANT_ID": "",
+    "BLUEPRINT_CLIENT_ID": "",
+    "AGENT_IDENTITY_ID": "",
+
+    // agent-user: Microsoft MCP Server for Enterprise (delegated only). app-only: e.g. the echo MCP server.
+    "AUTH_MODE": "agent-user",
+    "AGENT_USER_UPN": "agentid-cf-autonomous@ai.dayzure.com",
+    "AGENT_USER_ID": "5c8b0ebd-cb83-4f8e-b18f-a16483a142da",
+
+    "MCP_SERVER_URL": "https://mcp.svc.cloud.microsoft/enterprise",
+    "MCP_SCOPES": "api://<mcp app id>/.default",
+
+    "JOB_PROMPT": "How many users and how many groups are in this tenant?",
+    "JOB_TOOL": "",
+    "JOB_TOOL_ARGUMENTS": "",
+
+    "ASSERTION_ALGORITHM": "PS256",
+    "AI_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    "MSAL_LOG_LEVEL": "warning",
+
+    // Who may call /status and /run: "admin-key" (header x-admin-key = ADMIN_KEY secret) or
+    // "access" (Cloudflare Access protects this Worker; operators sign in with Entra ID,
+    // automation uses an Access service token). ACCESS_AUD = the Access application's AUD tag.
+    "ADMIN_AUTH": "admin-key",
+    "ACCESS_AUD": ""
+  }
+  // Secrets: BLUEPRINT_CERT_PEM, BLUEPRINT_KEY_PEM, ADMIN_KEY (admin-key mode only)
+}

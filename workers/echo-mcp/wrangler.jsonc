@@ -1,0 +1,38 @@
+// Echo MCP server, Cloudflare-native edition (optional): OAuthResourceServer from
+// @cloudflare/workers-oauth-provider guards a stateless createMcpHandler (Agents SDK,
+// MCP SDK v2). Microsoft Entra ID issues the tokens; by default only agent identities
+// may call. Shows each caller's Agent ID flow, agent identity, blueprint and user.
+// See docs/echo-mcp-server.md.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "agentid-cf-echo-mcp",
+  "main": "../../src/echo-mcp/index.ts",
+  "compatibility_date": "2026-11-01",
+  // getMcpAuthContext() uses AsyncLocalStorage.
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // Optional: per-agent-identity rate limit with the Workers Rate Limiting binding
+  // (Wrangler 4.36+). namespace_id is any positive integer unique in your account.
+  // "ratelimits": [
+  //   { "name": "AGENT_RATE_LIMITER", "namespace_id": "4711", "simple": { "limit": 60, "period": 60 } }
+  // ],
+
+  "vars": {
+    "TENANT_ID": "00000000-0000-0000-0000-000000000000",
+    "ECHO_APP_ID": "00000000-0000-0000-0000-000000000000",
+    "ECHO_REQUIRED_SCOPE": "Echo.Read",
+    "ECHO_REQUIRED_ROLE": "Echo.Read.All",
+
+    // Caller policy. Lists are comma-separated; empty = no restriction.
+    "REQUIRE_AGENT_CALLER": "true",
+    "ALLOWED_CALLER_FLOWS": "",
+    "ALLOWED_BLUEPRINT_IDS": "",
+    "ALLOWED_AGENT_IDS": "",
+
+    // Public URL of the MCP endpoint (set it for Custom Domains); empty = <request origin>/mcp.
+    "ECHO_RESOURCE_URL": "",
+    // Custom Domain host names for the MCP handler's Host check (workers.dev needs none).
+    "ECHO_ALLOWED_HOSTNAMES": ""
+  }
+}

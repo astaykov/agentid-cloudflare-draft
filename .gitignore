@@ -1,0 +1,21 @@
+node_modules/
+.wrangler/
+dist/
+# local secrets and generated credentials
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+certs/
+*.pem
+*.key
+*.pfx
+# Entra setup output (ids only, but tenant-specific)
+scripts/entra/entra.config.json
+scripts/entra/.entra-state.json
+scripts/entra/out/
+# CloudFlare workers local dev settings
+wrangler.jsonc.local
+# CLI token cache
+.agent-cli/
+scripts/cloudflare/edge.config.json

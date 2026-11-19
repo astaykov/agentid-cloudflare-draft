@@ -1,0 +1,4 @@
+# Copy to .dev.vars (same folder) for `npm run dev:autonomous`. Never commit .dev.vars.
+BLUEPRINT_CERT_PEM="-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----"
+BLUEPRINT_KEY_PEM="-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----"
+ADMIN_KEY="change-me-to-a-long-random-string"

@@ -1,0 +1,43 @@
+// Interactive agent: validates the user's Entra token (audience = blueprint)
+// and calls Microsoft MCP Server for Enterprise on-behalf-of the user.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "agentid-cf-interactive",
+  "main": "../../src/interactive/index.ts",
+  "compatibility_date": "2026-11-01",
+  // On by default from 2026-08-04; kept explicit for older local Wrangler/workerd versions.
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  "durable_objects": {
+    "bindings": [{ "name": "INTERACTIVE_AGENT", "class_name": "InteractiveAgent" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["InteractiveAgent"] }],
+
+  // Workers AI powers /api/chat. Remove to run without an LLM.
+  "ai": { "binding": "AI" },
+
+  // Optional: reach an MCP server Worker of this account over a service binding (no public
+  // hop). The Entra token is still sent and validated by that Worker. Keep MCP_SERVER_URL
+  // set to its public /mcp URL (used for the path and as the token's resource).
+  // "services": [{ "binding": "MCP_SERVICE", "service": "agentid-cf-echo-mcp" }],
+  "services": [{ "binding": "ECHO_MCP_SERVICE", "service": "agentid-cf-echo-mcp" }],
+
+  "vars": {
+    "TENANT_ID": "00000000-0000-0000-0000-000000000000",
+    "BLUEPRINT_CLIENT_ID": "00000000-0000-0000-0000-000000000000",
+    "AGENT_IDENTITY_ID": "00000000-0000-0000-0000-000000000000",
+    "INBOUND_REQUIRED_SCOPES": "access_agent",
+    "INBOUND_ALLOWED_CLIENT_IDS": "",
+    "MCP_SERVER_URL": "https://mcp.svc.cloud.microsoft/enterprise",
+    "MCP_SCOPES": "api://e8c77dc2-69b3-43f4-bc51-3213c9d915b4/.default",
+    "ECHO_MCP_URL": "https://agentid-cf-echo-mcp.astaykov.workers.dev/mcp",
+    "ECHO_MCP_SCOPES": "api://<echo mcp app id>/Echo.Read",
+    "ASSERTION_ALGORITHM": "PS256",
+    "AI_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    "MSAL_LOG_LEVEL": "warning"
+  }
+  // Secrets (never in this file):
+  //   npx wrangler secret put BLUEPRINT_CERT_PEM -c workers/interactive/wrangler.jsonc < certs/interactive-blueprint/interactive-blueprint.cert.pem
+  //   npx wrangler secret put BLUEPRINT_KEY_PEM  -c workers/interactive/wrangler.jsonc < certs/interactive-blueprint/interactive-blueprint.key.pem
+}

@@ -1,0 +1,45 @@
+{
+  "name": "agentid-cloudflare",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Microsoft Entra Agent ID for agents on Cloudflare Workers and the Cloudflare Agents SDK: certificate-based agent identity blueprint, MSAL Node, on-behalf-of and autonomous flows to MCP servers, and an Entra-protected MCP server built with Cloudflare's MCP tooling.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --no-warnings --import ./test/support/register-stubs.mjs --test test/*.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "check:feed": "node scripts/check-npm-feed.mjs",
+    "cert:interactive": "node scripts/cert/new-blueprint-cert.mjs --name interactive-blueprint",
+    "cert:autonomous": "node scripts/cert/new-blueprint-cert.mjs --name autonomous-blueprint",
+    "entra:setup": "node scripts/entra/setup-entra.mjs --config scripts/entra/entra.config.json",
+    "entra:setup:dry-run": "node scripts/entra/setup-entra.mjs --config scripts/entra/entra.config.json --dry-run",
+    "dev:interactive": "wrangler dev -c workers/interactive/wrangler.jsonc --port 8787",
+    "dev:autonomous": "wrangler dev -c workers/autonomous/wrangler.jsonc --port 8788 --test-scheduled",
+    "dev:echo": "wrangler dev -c workers/echo-mcp/wrangler.jsonc --port 8789",
+    "dev:echo-lite": "wrangler dev -c workers/echo-mcp-lite/wrangler.jsonc --port 8790",
+    "deploy:interactive": "wrangler deploy -c workers/interactive/wrangler.jsonc",
+    "deploy:autonomous": "wrangler deploy -c workers/autonomous/wrangler.jsonc",
+    "deploy:echo": "wrangler deploy -c workers/echo-mcp/wrangler.jsonc",
+    "deploy:echo-lite": "wrangler deploy -c workers/echo-mcp-lite/wrangler.jsonc",
+    "deploy:jwks-sync": "wrangler deploy -c workers/edge-jwks-sync/wrangler.jsonc",
+    "cli": "node scripts/client/agent-cli.mjs",
+    "autonomous:run": "node scripts/client/autonomous-admin.mjs run",
+    "autonomous:status": "node scripts/client/autonomous-admin.mjs status",
+    "edge:setup": "node --experimental-strip-types --no-warnings scripts/cloudflare/setup-edge-jwt-validation.mjs --config scripts/cloudflare/edge.config.json",
+    "edge:setup:dry-run": "node --experimental-strip-types --no-warnings scripts/cloudflare/setup-edge-jwt-validation.mjs --config scripts/cloudflare/edge.config.json --dry-run"
+  },
+  "dependencies": {
+    "@azure/msal-node": "^7.1.1",
+    "@cloudflare/workers-oauth-provider": "^1.2.0",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "agents": ">=0.26.0 <1.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260703.1",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.101.0"
+  }
+}

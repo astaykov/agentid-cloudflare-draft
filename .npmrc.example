@@ -1,0 +1,12 @@
+# Copy to .npmrc and point npm at your organisation's package mirror.
+# Examples:
+#   Azure Artifacts: registry=https://pkgs.dev.azure.com/<org>/<project>/_packaging/<feed>/npm/registry/
+#   Artifactory:     registry=https://<host>/artifactory/api/npm/<repo>/
+#   Nexus:           registry=https://<host>/repository/<repo>/
+registry=https://<your-mirror>/npm/registry/
+always-auth=true
+
+# Keep optional dependencies ON: wrangler needs the platform packages
+# @cloudflare/workerd-<platform> and @esbuild/<platform>. If they are skipped,
+# their install scripts fall back to downloading from registry.npmjs.org.
+# omit=   (do not set omit=optional)

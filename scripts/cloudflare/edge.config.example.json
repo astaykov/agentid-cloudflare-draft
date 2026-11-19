@@ -1,0 +1,21 @@
+{
+  "zoneId": "0123456789abcdef0123456789abcdef",
+  "tenantId": "00000000-0000-0000-0000-000000000000",
+  "action": "log",
+  "tokenConfigurationTitle": "Entra ID (agentid-cf sample)",
+  "hosts": [
+    {
+      "host": "echo-mcp.contoso.com",
+      "audience": "00000000-0000-0000-0000-000000000000",
+      "requireAgent": true,
+      "allowedBlueprints": [],
+      "publicPaths": ["/", "/healthz"]
+    },
+    {
+      "host": "agent.contoso.com",
+      "audience": "00000000-0000-0000-0000-000000000000",
+      "requireAgent": false,
+      "publicPaths": ["/", "/healthz"]
+    }
+  ]
+}

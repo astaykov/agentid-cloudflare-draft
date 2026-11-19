@@ -1,0 +1,42 @@
+{
+  "_comment": "Configuration for scripts/entra/setup-entra.mjs. Copy to scripts/entra/entra.config.json and edit. tenantId: your directory (tenant) ID, a GUID (Entra admin center > Overview). sponsorUserId: object ID of the user who becomes sponsor and owner of the blueprints and agent identities; null = the signed-in user. graphClientId: public client used to sign in to Microsoft Graph; the default is the well-known 'Microsoft Graph Command Line Tools' app used by Microsoft Graph PowerShell. Paths are relative to the current directory or the project root. A section that is missing or has enabled=false is skipped.",
+  "tenantId": "<your-tenant-id>",
+  "sponsorUserId": null,
+  "graphClientId": "14d82eec-204b-4c2f-b7e8-296a70dab67e",
+  "mcpServer": {
+    "_comment": "Microsoft MCP Server for Enterprise (preview). The script creates its service principal in your tenant if it is missing, and grants the agent identities these delegated scopes as admin consent (agent identities cannot be consented to interactively). Use an empty list to skip these grants.",
+    "appId": "e8c77dc2-69b3-43f4-bc51-3213c9d915b4",
+    "delegatedScopes": ["MCP.User.Read.All", "MCP.GroupMember.Read.All"]
+  },
+  "interactive": {
+    "_comment": "Interactive Worker: users call the agent with a token for api://<blueprint appId>/<scopeValue>, and the agent uses on-behalf-of to call MCP Server for Enterprise. Creates the blueprint (+ principal, the certificate at certificatePath, the exposed scope), the agent identity, an admin grant to the MCP server, and the public client app registration 'clientAppName' used by scripts/client/agent-cli.mjs. Create the certificate with: npm run cert:interactive.",
+    "enabled": true,
+    "blueprintName": "agentid-cf-interactive-blueprint",
+    "agentIdentityName": "agentid-cf-interactive-agent",
+    "certificatePath": "certs/interactive-blueprint/interactive-blueprint.cer",
+    "scopeValue": "access_agent",
+    "clientAppName": "agentid-cf-cli-client"
+  },
+  "autonomous": {
+    "_comment": "Autonomous (scheduled) Worker: runs without a user. Creates the blueprint (+ principal, the certificate at certificatePath) and the agent identity. Use its own certificate (npm run cert:autonomous), never the interactive one.",
+    "enabled": true,
+    "blueprintName": "agentid-cf-autonomous-blueprint",
+    "agentIdentityName": "agentid-cf-autonomous-agent",
+    "certificatePath": "certs/autonomous-blueprint/autonomous-blueprint.cer",
+    "agentUser": {
+      "_comment": "Optional agent user: the agent's own user account, needed for delegated-only APIs such as MCP Server for Enterprise. Agent users are currently available only to tenants in the Frontier preview program; one agent user per agent identity. userPrincipalName must use a verified domain of your tenant. assignDirectoryReaders=true also assigns the Directory Readers role (needs Privileged Role Administrator), because agent users have guest-like default permissions. Set enabled=false to run the autonomous agent app-only.",
+      "enabled": true,
+      "userPrincipalName": "agentid-cf-autonomous@<your-verified-domain>",
+      "displayName": "Cloudflare autonomous agent",
+      "mailNickname": "agentid-cf-autonomous",
+      "assignDirectoryReaders": false
+    }
+  },
+  "echo": {
+    "_comment": "Optional Entra-protected echo MCP server shipped with the sample (workers/echo-mcp). Creates an app registration exposing the delegated scope 'scopeValue' and the application role 'appRoleValue', its service principal, an admin grant of the scope to the interactive agent identity (and to the agent user), and an app role assignment for the autonomous agent identity (app-only).",
+    "enabled": false,
+    "appName": "agentid-cf-echo-mcp",
+    "scopeValue": "Echo.Read",
+    "appRoleValue": "Echo.Read.All"
+  }
+}

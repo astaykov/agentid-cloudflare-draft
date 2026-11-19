@@ -1,0 +1,17 @@
+// Optional, with the edge authorizer only (Enterprise + API Shield): pushes the Entra
+// tenant's signing keys into the API Shield token configuration every 30 minutes.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "agentid-cf-edge-jwks-sync",
+  "main": "../../src/edge-jwks-sync/index.ts",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": false,
+  "observability": { "enabled": true },
+  "triggers": { "crons": ["*/30 * * * *"] },
+  "vars": {
+    "ZONE_ID": "0123456789abcdef0123456789abcdef",
+    "TOKEN_CONFIG_ID": "00000000-0000-0000-0000-000000000000",
+    "TENANT_ID": "00000000-0000-0000-0000-000000000000"
+  }
+  // Secret: npx wrangler secret put CF_API_TOKEN -c workers/edge-jwks-sync/wrangler.jsonc
+}
