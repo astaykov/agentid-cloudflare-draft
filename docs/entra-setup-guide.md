@@ -257,7 +257,7 @@ POST https://graph.microsoft.com/v1.0/oauth2PermissionGrants
 
 **13. (Optional) Directory Readers for the agent user** (`RoleManagement.ReadWrite.Directory`)
 
-Agent users have restricted default permissions. To let the scheduled job count users and
+Agent users have restricted default permissions. To let the autonomous agent count users and
 groups, assign a read-only directory role:
 
 ```http

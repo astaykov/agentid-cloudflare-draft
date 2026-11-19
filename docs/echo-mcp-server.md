@@ -132,8 +132,8 @@ no Agent ID claims"). The manifest fragment is in [entra-setup-guide.md](entra-s
    ```bash
    curl https://agentid-cf-echo-mcp.<subdomain>.workers.dev/.well-known/oauth-protected-resource/mcp
    npm run cli -- tools                                  # the interactive agent lists "enterprise" and "echo"
-   npm run cli -- call --tool whoami                     # interactive agent -> echo server, OBO
-   npm run cli -- call --tool echo --arg message=hello
+   npm run cli -- call --server echo --tool whoami       # interactive agent to the echo server, on-behalf-of
+   npm run cli -- call --server echo --tool echo --arg message=hello
    npm run cli -- chat --new "Ask the echo server who is calling it"
    curl -X POST -H "x-admin-key: ..." https://agentid-cf-autonomous.<subdomain>.workers.dev/run
    ```
@@ -157,12 +157,12 @@ workers/echo-mcp/wrangler.jsonc` shows what the echo server decided.
 | `token_acquisition_failed`, `AADSTS70011` | Malformed scope, for example `Echo.read` or `.default` mixed with other scopes | Use exactly `api://<echo app id>/Echo.Read` |
 | `mcp_http_error` whose message contains `error code: 1042` | Plain `fetch()` between two Workers on the same zone | Add the `ECHO_MCP_SERVICE` binding (or the `global_fetch_strictly_public` flag on the agent) |
 | `mcp_http_error` 404 (no 1042) | `ECHO_MCP_URL` lacks `/mcp`, or names another Worker or subdomain | Use `mcpEndpoint` from `GET /` of the echo server |
-| `mcp_http_error` 403 `{"jsonrpc":"2.0","error":{"code":-32000,"message":"Missing Host header"}}` | A service binding call has no `Host` header, and `createMcpHandler` checks `Host` on workers.dev endpoints (DNS rebinding protection). The token was already accepted at this point | Apply update 3, then `npm run deploy:echo` and `npm run deploy:interactive` (either one alone fixes it; deploy both) |
+| `mcp_http_error` 403 `{"jsonrpc":"2.0","error":{"code":-32000,"message":"Missing Host header"}}` | A service binding call has no `Host` header, and `createMcpHandler` checks `Host` on workers.dev endpoints (DNS rebinding protection). The token was already accepted at this point | The sample's agents send the host on binding calls and this server fills a missing one: deploy both again from this version. A client of your own must set `Host` to the host of the URL |
 | `mcp_http_error` 403 `Invalid Host: <name>` | The host of `ECHO_MCP_URL` is not the echo server's own host name: another Worker name or subdomain, or a custom domain missing from the echo server's `ECHO_ALLOWED_HOSTNAMES` | Use `mcpEndpoint` from `GET /` of the echo server; on a custom domain add it to `ECHO_ALLOWED_HOSTNAMES` |
 | `mcp_http_error` 401 `invalid_token`, audience | The echo server's `ECHO_APP_ID` differs from the app in `ECHO_MCP_SCOPES` | Make them the same app ID; redeploy the echo server |
 | `mcp_http_error` 401 `invalid_token`, issuer or v1 token | Echo `TENANT_ID` wrong, or the echo app issues v1 tokens | Fix `TENANT_ID`; `npm run entra:setup` sets `requestedAccessTokenVersion` 2 |
 | `mcp_http_error` 403 `insufficient_scope` | The token lacks `Echo.Read` (another scope was requested) | Request `api://<echo app id>/Echo.Read` |
-| `mcp_http_error` 403 `access_denied`, "no Agent ID claims" (older builds: "no xms_par_app_azp in the token") | The echo app registration does not list the Agent ID optional claims, so Entra leaves them out | Run `npm run entra:setup -- --only echo` (or add them in the Manifest), then redeploy the agent: it keeps the token it already has until it expires. `whoami` must show `xms_par_app_azp` under `leg2_on_behalf_of.echo` |
+| `mcp_http_error` 403 `access_denied`, "no Agent ID claims" | The echo app registration does not list the Agent ID optional claims, so Entra leaves them out | Run `npm run entra:setup -- --only echo` (or add them in the Manifest), then redeploy the agent: it keeps the token it already has until it expires. `whoami` must show `xms_par_app_azp` under `leg2_on_behalf_of.echo` |
 | `mcp_http_error` 403 `access_denied`, other message | Caller policy: interactive blueprint not in `ALLOWED_BLUEPRINT_IDS`, `agent-obo` not in `ALLOWED_CALLER_FLOWS`, or agent not in `ALLOWED_AGENT_IDS` | Add the interactive blueprint (and agent identity) to the lists, redeploy the echo server |
 | `mcp_http_error` 503 | The echo server cannot load the tenant's signing keys (placeholder `TENANT_ID`) | Set the real tenant ID |
 | `unknown_tool` with `whoami` missing from `available` | The echo server is not connected (see the other errors), or `ECHO_MCP_URL` is empty | `npm run cli -- tools` shows why |
@@ -176,5 +176,8 @@ workers/echo-mcp/wrangler.jsonc` shows what the echo server decided.
   policy, rate limit, metadata.
 * `test/echo-mcp-native.test.ts`: the Cloudflare-native edition's wiring. `OAuthResourceServer`,
   `createMcpHandler` and `McpServer` are replaced by small stand-ins (`test/support/stubs`) that
-  follow their documented contracts, so this checks our validator, error mapping, `ctx.props` to
-  tools, and the rate limit, not the real packages. Run `npm run dev:echo` for the real thing.
+  follow their documented behaviour, including the handler's `Host` check, so this checks our
+  validator, error mapping, `ctx.props` to tools, the rate limit and service binding calls without
+  `Host`, not the real packages. Run `npm run dev:echo` for the real thing.
+* `test/mcp-servers.test.ts`: the interactive agent with both servers, the echo server reached over a
+  service binding, and the chat wiring from the model's `echo_server_whoami` to the server's `whoami`.

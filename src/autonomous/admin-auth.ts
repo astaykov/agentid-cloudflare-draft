@@ -7,8 +7,6 @@
  *                        Entra ID (Access identity provider), automation presents an
  *                        Access service token. The Worker only checks the platform-
  *                        validated ctx.access and that it belongs to OUR Access app.
- *                        This is the counterpart of IAM (SigV4) auth on AgentCore's
- *                        InvokeAgentRuntime in the AWS sample.
  *  ADMIN_AUTH=admin-key  (default) a shared secret header, for first tests.
  *
  * No npm imports, so it runs in the Node tests.

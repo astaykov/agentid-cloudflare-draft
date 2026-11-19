@@ -1,16 +1,16 @@
 # Certificate authentication for the agent identity blueprint
 
-Cloudflare Workers have no platform-issued workload identity token (nothing like AWS
-`sts:GetWebIdentityToken`, a GCP service account token or an Azure managed identity). So the
-secretless federated-credential pattern used in the AWS AgentCore sample has no direct
-equivalent. This sample uses the documented fallback: **a certificate on the blueprint**.
+Cloudflare Workers have no platform-issued workload identity token: the runtime cannot present an
+OIDC token of its own, and there is no managed identity. The secretless pattern, a federated
+identity credential on the blueprint that trusts the platform's token, therefore has no equivalent
+here. This sample uses the documented fallback: **a certificate on the blueprint**.
 
 Microsoft's guidance in one table:
 
 | Credential on the blueprint | Microsoft Learn says | Fits Cloudflare? |
 |---|---|---|
 | Managed identity as FIC | Recommended for production | No (no Azure managed identity on Workers) |
-| Other FIC (AWS, GCP, GitHub, Kubernetes, "other issuer") | Supported | Only with a self-hosted OIDC issuer (not covered here) |
+| Other FIC (another cloud's workload identity, GitHub, Kubernetes, any OIDC issuer) | Supported | Only with a self-hosted OIDC issuer (not covered here) |
 | **Certificate** | "Use a certificate when the platform can't project an OIDC token" (Auth SDK configuration); client certificates listed as a secure alternative to secrets | **Yes: this sample** |
 | Client secret | Not for production; cannot satisfy the SN+I requirement for FMI | No |
 
@@ -81,13 +81,17 @@ If Leg 1 fails while the plain blueprint sign-in works, check this first.
 
 Pick one:
 
-1. **Generator in this repo (dev/test, zero dependencies)**
+1. **Generator in this repo (dev/test, zero dependencies)**, run from the project root (the folder
+   with `package.json`):
    ```bash
-   node scripts/cert/new-blueprint-cert.mjs --name interactive-blueprint      # RSA 2048, 12 months
-   node scripts/cert/new-blueprint-cert.mjs --name autonomous-blueprint --key-size 3072
+   npm run cert:interactive      # = node scripts/cert/new-blueprint-cert.mjs --name interactive-blueprint (RSA 2048, 12 months)
+   npm run cert:autonomous       # = ... --name autonomous-blueprint
+   node scripts/cert/new-blueprint-cert.mjs --name autonomous-blueprint --key-size 3072   # other options: --months, --cn, --out, --force
    ```
    Writes the PEM certificate, PKCS#8 key, DER `.cer`, a Graph `keyCredentials` body and a
-   `.dev.vars` snippet to `certs/<name>/`.
+   `.dev.vars` snippet to `certs/<name>/` in the project root, where `entra.config.json` and the
+   deployment guide expect them, and prints the matching `wrangler secret put` commands (PowerShell
+   form on Windows).
 2. **OpenSSL** (ships with Git for Windows)
    ```bash
    openssl req -x509 -newkey rsa:2048 -sha256 -days 365 -nodes \

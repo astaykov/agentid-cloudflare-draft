@@ -60,8 +60,9 @@ Always run Wrangler through the project (`npx wrangler ...` or the npm scripts).
 
 Put the IDs from the Entra setup into the `vars` of each config. Nothing secret goes here.
 
-* `workers/interactive/wrangler.jsonc`: `TENANT_ID`, `BLUEPRINT_CLIENT_ID`, `AGENT_IDENTITY_ID`,
-  optionally `INBOUND_ALLOWED_CLIENT_IDS` (your CLI client app ID) and `AI_MODEL`.
+* `workers/interactive/wrangler.jsonc`: `TENANT_ID`, `BLUEPRINT_CLIENT_ID`, `AGENT_IDENTITY_ID`;
+  optionally `INBOUND_ALLOWED_CLIENT_IDS` (your CLI client app ID), `AI_MODEL`, and for the echo MCP
+  server `ECHO_MCP_URL`, `ECHO_MCP_SCOPES` and the `ECHO_MCP_SERVICE` binding.
 * `workers/autonomous/wrangler.jsonc`: `TENANT_ID`, `BLUEPRINT_CLIENT_ID`, `AGENT_IDENTITY_ID`,
   `AUTH_MODE`, `AGENT_USER_UPN` (or `AGENT_USER_ID`), `JOB_PROMPT` or `JOB_TOOL`. By default
   `triggers.crons` is empty: the agent runs only when an operator starts it. Add cron
@@ -142,14 +143,14 @@ Once stored, delete the local `.key.pem` files (or keep them in your vault only)
 # configuration + certificate (no token needed)
 curl https://agentid-cf-interactive.<your-subdomain>.workers.dev/healthz
 
-# interactive: sign in as a user and call the agent (see scripts/client/agent-cli.mjs)
-npm run cli -- login --tenant <tenant-id> --client <cli-client-app-id> --blueprint <interactive-blueprint-app-id>
-npm run cli -- whoami --agent https://agentid-cf-interactive.<your-subdomain>.workers.dev
-npm run cli -- tools  --agent https://agentid-cf-interactive.<your-subdomain>.workers.dev
-npm run cli -- chat   --agent https://agentid-cf-interactive.<your-subdomain>.workers.dev "How many users are in my tenant?"
-npm run cli -- chat --new "How many guest users are there?"   # --new: forget the earlier turns first
-npm run cli -- chat --new --debug "Ask the echo server who is calling it"   # --debug: each model step
-npm run cli -- chat --new --debug --model @cf/meta/llama-4-scout-17b-16e-instruct "Ask the echo server who is calling it"   # another model, no redeploy
+# interactive: sign in once (the CLI remembers the agent URL), then call the agent
+npm run cli -- login --tenant <tenant-id> --client <cli-client-app-id> --blueprint <interactive-blueprint-app-id> --agent https://agentid-cf-interactive.<your-subdomain>.workers.dev
+npm run cli -- whoami
+npm run cli -- tools
+npm run cli -- chat "How many users are in my tenant?"
+npm run cli -- chat --new "How many guest users are there?"                  # --new: forget the earlier turns first
+npm run cli -- chat --new --debug "Ask the echo server who is calling it"     # --debug: each model step
+npm run cli -- chat --new --model @cf/meta/llama-4-scout-17b-16e-instruct "How many groups are there?"   # another model, no redeploy
 
 # autonomous: start a run (it has no schedule by default) and read the results
 export AUTONOMOUS_URL=https://agentid-cf-autonomous.<your-subdomain>.workers.dev
@@ -162,8 +163,8 @@ npm run autonomous:status -- --last 3
 ```powershell
 # PowerShell (Windows PowerShell 5.1: type curl.exe, because curl is an alias for Invoke-WebRequest)
 curl.exe https://agentid-cf-interactive.<your-subdomain>.workers.dev/healthz
-npm run cli -- login --tenant <tenant-id> --client <cli-client-app-id> --blueprint <interactive-blueprint-app-id>
-npm run cli -- whoami --agent https://agentid-cf-interactive.<your-subdomain>.workers.dev
+npm run cli -- login --tenant <tenant-id> --client <cli-client-app-id> --blueprint <interactive-blueprint-app-id> --agent https://agentid-cf-interactive.<your-subdomain>.workers.dev
+npm run cli -- whoami
 
 $env:AUTONOMOUS_URL = "https://agentid-cf-autonomous.<your-subdomain>.workers.dev"
 $env:AUTONOMOUS_ADMIN_KEY = "<ADMIN_KEY>"        # ADMIN_AUTH=admin-key
@@ -244,7 +245,7 @@ Details and the reasoning: [cloudflare-built-ins.md](cloudflare-built-ins.md).
 
 **Echo MCP server.** `npm run deploy:echo` (Cloudflare-native) or `npm run deploy:echo-lite`. No
 secrets. The interactive agent adds it as a second MCP server with `ECHO_MCP_URL`,
-`ECHO_MCP_SCOPES` and the `ECHO_MCP_SERVICE` binding ([README](../README.md#call-the-echo-mcp-server-from-the-interactive-agent)).
+`ECHO_MCP_SCOPES` and the `ECHO_MCP_SERVICE` binding ([README](../README.md#the-echo-mcp-server)).
 Point the autonomous agent at it with `AUTH_MODE=app-only`,
 `MCP_SERVER_URL=https://agentid-cf-echo-mcp.<subdomain>.workers.dev/mcp`,
 `MCP_SCOPES=api://<echo app id>/.default` and the `MCP_SERVICE` binding. Details:
@@ -302,15 +303,15 @@ the same zone, including your workers.dev subdomain: a plain `fetch()` between t
 | Echo server 403 `access_denied`, "no Agent ID claims" | The echo app registration does not list the Agent ID optional claims (`xms_par_app_azp`, `xms_act_fct`, `xms_sub_fct`); run `npm run entra:setup -- --only echo`, then redeploy the agent so it drops its cached token |
 | Echo server 403 `access_denied`, other message | Valid token, refused by the caller policy: a blueprint, agent or flow not in the allow-lists |
 | `chat` answers an earlier question again | The model saw the earlier turns of your conversation. Use `chat --new` (or `reset`); turns older than `CHAT_MEMORY_MINUTES` are dropped automatically |
-| `chat` answers "Your input is incomplete..." (or similar) and lists no tool calls | The model replied without calling a tool. Since update 4 the agent asks once more and `chat --debug` shows each step; since update 5 the echo tools are `echo_server_whoami` / `echo_server_echo` to the model. `npm run cli -- call --server echo --tool whoami` checks the identity chain without the model. Compare models with `chat --model @cf/meta/llama-4-scout-17b-16e-instruct`, and make the better one `AI_MODEL` |
-| `chat` answers with a tool call such as `echo_server_whoami()` or `[echo_server_whoami {}]` | The model wrote the call as text; Workers AI did not turn it into a tool call. Update 6 runs such calls (`chat --debug` marks them "written as text, run anyway") |
+| `chat` answers "Your input is incomplete..." (or similar) and lists no tool calls | The model did not call a tool, even after the agent asked once more. `chat --debug` shows each model step; `npm run cli -- call --server echo --tool whoami` checks the identity chain without the model. Compare models with `chat --model @cf/meta/llama-4-scout-17b-16e-instruct` and make the better one `AI_MODEL` |
+| `chat` answers with a tool call such as `echo_server_whoami()` or `[echo_server_whoami {}]` | The model wrote the call as text. The agent runs such calls (`chat --debug` marks them "written as text, run anyway") and, when the model repeats a call instead of answering, shows the last tool result. A raw call as the answer means an older deployment of the interactive agent: deploy it again |
 | `error code: 1042` when an agent calls the echo server | Plain `fetch()` between two Workers on the same zone; add the service binding. More echo errors: [echo-mcp-server.md](echo-mcp-server.md#troubleshooting-the-interactive-agent-to-echo-call) |
-| Echo server 403 `"Missing Host header"` (JSON-RPC error -32000) | A service binding call without a `Host` header, refused by `createMcpHandler`'s DNS rebinding check on workers.dev. Fixed in update 3: redeploy the echo server and the agents |
+| Echo server 403 `"Missing Host header"` (JSON-RPC error -32000) | A service binding call without a `Host` header, refused by `createMcpHandler`'s DNS rebinding check on workers.dev. The sample's agents send the host on binding calls and the echo server fills a missing one: deploy both again from this version. A client of your own must set `Host` to the URL's host on binding calls |
 | Echo server 503 | It could not fetch the tenant's signing keys (egress, `TENANT_ID`) |
 | `/status` 403 `access_required` | `ADMIN_AUTH=access` but the request did not come through Access (Worker not protected, or a service binding call) |
 | 401 JSON "Rejected at the Cloudflare edge" | The API Shield rule blocked it: no valid Entra token for that host's audience; see Security > Events |
 | Errors about CPU time | Use Workers Paid, or set `limits.cpu_ms` |
 | Wrangler warns the compatibility date is newer than its runtime | Your mirrored Wrangler is older than the config; update it, or lower `compatibility_date` (keep `nodejs_compat`; 2025-09-01 or later) |
 | `npm install` fails on `@cloudflare/workerd-*` or `@esbuild/*` | The mirror lacks the platform package; see [restricted-package-feeds.md](restricted-package-feeds.md) |
-| `npm install`: `ETARGET No matching version found for <package>@<range>` | Either no published version fits the range, or the mirror does not have it yet. `npm run check:feed` tells the two apart and lists every other gap too. An early copy of this sample asked for `@cloudflare/workers-types@^4.20260901.0`, which cannot exist (5.x replaced 4.x on 3 July 2026); use `^5.20260703.1` |
+| `npm install`: `ETARGET No matching version found for <package>@<range>` | Either no published version fits the range, or the mirror does not have it yet. `npm run check:feed` tells the two apart and lists every other gap too. For `@cloudflare/workers-types`, version 5 replaced 4.x on 3 July 2026, so any `^4.2026...` range newer than that matches nothing; the sample asks for `^5.20260703.1` |
 | `npm install`: `ERESOLVE` on `@cloudflare/workers-types` | Wrangler 4.1xx declares it as an optional peer `^5.<date>`; the mirror's newest 5.x is older than that. Sync a newer 5.x, or remove the package (only `npm run typecheck` uses it) |

@@ -38,8 +38,8 @@ const t2 = await agentCca.acquireTokenByClientCredential({ scopes: ["api://Azure
 await agentCca.acquireTokenByUserFederatedIdentityCredential({ scopes, assertion: t2.accessToken, username });
 ```
 
-Added (the MSAL guide covers app-only and agent users; OBO comes from the Agent ID OBO page and
-the AWS sample):
+Added (the MSAL guide covers app-only and agent users; on-behalf-of follows the Agent ID
+on-behalf-of documentation):
 
 ```ts
 await agentCca.acquireTokenOnBehalfOf({ oboAssertion: userTokenForBlueprint, scopes });
@@ -82,5 +82,6 @@ Behaviour that matters here (msal-node source and changelog):
 * MSAL Node 5.x replaced its HTTP client with `fetch` and removed `proxyUrl` /
   `customAgentOptions`; a custom `networkClient` is still supported.
 * No official MSAL statement covers Cloudflare Workers either way (the MSAL team has an open
-  request for Deno and one to move from `jsonwebtoken` to `jose`). Treat the Workers runtime as
-  "works by design, verify in your account".
+  request for Deno and one to move from `jsonwebtoken` to `jose`). This sample ran MSAL Node 7.x on
+  Workers against a live tenant in November 2026: Leg 1 with the certificate and `fmiPath`, and
+  on-behalf-of. Verify the app-only and agent-user flows in your own account.

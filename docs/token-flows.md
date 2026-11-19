@@ -129,11 +129,11 @@ Requirements (Microsoft Learn, *agent on-behalf-of flow*):
 ```mermaid
 sequenceDiagram
   autonumber
-  participant C as Cron Trigger
+  participant C as Operator (POST /run) or Cron Trigger
   participant A as AutonomousAgent (Durable Object)
   participant E as Microsoft Entra ID
   participant M as MCP Server for Enterprise
-  C->>A: runJob("cron 0 * * * *")
+  C->>A: runJob(trigger)
   A->>E: Leg 1: blueprint + certificate, fmi_path = agent identity
   E-->>A: T1
   A->>E: Leg 2: client_id = agent identity, client_assertion = T1, scope = api://AzureADTokenExchange/.default
@@ -225,9 +225,11 @@ use it; see [echo-mcp-server.md](echo-mcp-server.md).
 
 ## Seeing it live
 
-`GET /api/whoami` on the interactive agent returns the non-secret claims of the three tokens
-in the chain (your inbound token, T1, the OBO token). Tokens themselves are never returned,
-logged or given to the LLM.
+`GET /api/whoami` on the interactive agent (`npm run cli -- whoami`) returns the non-secret claims
+of the tokens in the chain: your inbound token, T1, and one OBO token per MCP server. The echo MCP
+server's `whoami` tool (`npm run cli -- call --server echo --tool whoami`) shows how the resource sees
+the same agent: flow, agent identity, blueprint and user. Tokens themselves are never returned,
+logged or given to the model.
 
 ## Common errors
 

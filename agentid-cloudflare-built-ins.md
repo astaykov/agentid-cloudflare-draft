@@ -1,10 +1,8 @@
-# Cloudflare built-ins: the counterparts of AgentCore's authorizers
+# Cloudflare built-ins for Entra Agent ID
 
-AWS AgentCore lets you configure an inbound **JWT authorizer** on the runtime: a discovery URL,
-allowed audiences and clients, and AWS rejects bad tokens before your agent runs. Cloudflare has no
-single switch like that on Workers or the Agents SDK. The same job is split across a few built-in
-layers. This page maps them, says which ones this sample uses, and explains why some popular
-Cloudflare features do **not** fit Entra Agent ID.
+Cloudflare has no single switch that checks an Entra token before an agent on Workers or the Agents
+SDK runs. The job is split across a few built-in layers. This page lists them, says which ones this
+sample uses, and explains why some popular Cloudflare features do **not** fit Entra Agent ID.
 
 State: November 2026.
 
@@ -22,21 +20,21 @@ Every Cloudflare layer either **validates** an Entra token or **issues its own**
 
 So Entra stays the only token issuer, and Cloudflare is used to host, validate, isolate, throttle and log.
 
-## Mapping
+## Overview
 
-| AWS (AgentCore sample) | Cloudflare built-in | Where it runs | Plan | In this sample |
+| Need | Cloudflare built-in | Where it runs | Plan | In this sample |
 |---|---|---|---|---|
-| Runtime inbound **JWT authorizer** (`discoveryUrl`, `allowedAudience`, `allowedClients`) | **API Shield JWT validation** + a **WAF custom rule** on issuer, audience, `xms_par_app_azp` | Zone edge, before the Worker (Custom Domains / routes) | Enterprise + API Shield | Optional: `npm run edge:setup` ([below](#edge-authorizer-api-shield-jwt-validation)) |
-| (same) | Validation in the Worker before the Agent (Durable Object) is touched | Worker | All | Always: `inbound-auth.ts` (interactive), echo MCP server |
-| API Gateway authorizer in front of a tool / MCP endpoint | **`OAuthResourceServer`** (`@cloudflare/workers-oauth-provider`) + **`createMcpHandler`** (Agents SDK) with an Entra `validateToken` | Worker | All | Echo MCP server ([echo-mcp-server.md](echo-mcp-server.md)) |
-| IAM (SigV4) on `InvokeAgentRuntime` for operators and schedulers | **Cloudflare Access on the Worker**; the Worker reads the platform-validated `ctx.access` | Access, before the Worker | Zero Trust (Free up to 50 users) | Autonomous agent `ADMIN_AUTH=access` |
-| Workload identity: IAM outbound identity federation (STS `GetWebIdentityToken`) | **None.** Workers, Durable Objects, Agents and Containers get no platform-signed identity token | - | - | Certificate on the blueprint ([certificate-auth.md](certificate-auth.md)) |
-| Secrets Manager / KMS | Worker secrets; **Secrets Store** (open beta, up to 64 KB per secret) | Worker binding | All | Both supported for the certificate and key |
-| EventBridge Scheduler | **Cron Triggers** | Worker | All (5 per account on Free) | Optional; the autonomous agent runs when an operator starts it |
-| Private integration / VPC | **Service bindings** (Worker to Worker, no public hop) | Cloudflare network | All | `ECHO_MCP_SERVICE` (interactive) and `MCP_SERVICE` (autonomous) to the echo MCP server |
-| API Gateway usage plans / throttling | **Workers Rate Limiting binding** keyed by agent identity; WAF rate limiting by JWT claim (Enterprise + API Shield) | Worker / edge | All / Enterprise | Echo MCP server `AGENT_RATE_LIMITER` (opt-in) |
-| CloudWatch / CloudTrail | **Workers Logs**, Logpush, Tail Workers | Platform | All / Paid | Token-free audit line per MCP call |
-| AgentCore Identity token vault / Gateway outbound credential providers | No Entra Agent ID equivalent | - | - | MSAL in the Worker, cache per isolate |
+| Check the caller's Entra token before the agent runs | Validation in the Worker before the Agent (Durable Object) is touched | Worker | All | Always: `src/shared/entra/inbound-auth.ts` (interactive agent) and the echo MCP server |
+| The same check at the edge | **API Shield JWT validation** and a **WAF custom rule** on issuer, audience and `xms_par_app_azp` | Zone edge, before the Worker (Custom Domains, routes) | Enterprise + API Shield | Optional: `npm run edge:setup` ([below](#edge-authorizer-api-shield-jwt-validation)) |
+| Protect an MCP endpoint | **`OAuthResourceServer`** (`@cloudflare/workers-oauth-provider`) and **`createMcpHandler`** (Agents SDK) with an Entra `validateToken` | Worker | All | The echo MCP server ([echo-mcp-server.md](echo-mcp-server.md)) |
+| Let operators start the autonomous agent | **Cloudflare Access on the Worker**; the Worker reads the platform-validated `ctx.access` | Access, before the Worker | Zero Trust (Free up to 50 users) | `ADMIN_AUTH=access` |
+| A workload identity for the blueprint | **None.** Workers, Durable Objects, Agents and Containers get no platform-signed identity token | - | - | A certificate on the blueprint ([certificate-auth.md](certificate-auth.md)) |
+| Store the certificate and key | Worker secrets; **Secrets Store** (open beta, up to 64 KB per secret) | Binding | All | Both supported |
+| Run on a schedule | **Cron Triggers** | Worker | All (5 per account on Free) | Optional; by default an operator starts each run |
+| Call another Worker privately | **Service bindings** (Worker to Worker, no public hop) | Cloudflare network | All | `ECHO_MCP_SERVICE` (interactive) and `MCP_SERVICE` (autonomous) to the echo MCP server |
+| Throttle per agent | **Workers Rate Limiting binding** keyed by agent identity; WAF rate limiting by JWT claim | Worker; edge | All; Enterprise + API Shield | The echo MCP server's `AGENT_RATE_LIMITER` (opt-in) |
+| Audit | **Workers Logs**, Logpush, Tail Workers | Platform | All; Paid | One token-free audit line per MCP tool call |
+| Hold or broker outbound tokens | No equivalent for Entra Agent ID | - | - | MSAL in the Worker, cache per isolate |
 
 ## What the sample uses
 
@@ -87,18 +85,21 @@ Entra tokens (see the rule above).
   Worker. The Entra token is still sent and validated. Keep the URL variable on the public `/mcp` URL
   (path and host). Between two Workers on the same zone, such as your workers.dev subdomain, this is
   the way to call: a plain `fetch()` fails with error 1042 unless the caller sets the
-  `global_fetch_strictly_public` compatibility flag. A binding call has no `Host` header unless the
-  caller sets one, and `createMcpHandler` refuses it on workers.dev with `403 "Missing Host header"`;
-  the sample's MCP client sends the host of the URL, and the echo server fills a missing one.
+  `global_fetch_strictly_public` compatibility flag.
+* **The `Host` header on binding calls.** A call through a service binding carries only the headers
+  the caller set, so it has no `Host` header unless the caller adds one, and `createMcpHandler`
+  refuses such a call on workers.dev with `403 "Missing Host header"` (its DNS rebinding check). The
+  sample's MCP client sends the host of the server URL on binding calls, and the echo server gives a
+  call without `Host` the host of its URL. A `Host` that is present is never changed.
 * **Rate limiting.** Uncomment `ratelimits` in `workers/echo-mcp/wrangler.jsonc` to limit requests per
   agent identity (`azp`). Limits are approximate and per Cloudflare location.
-* **Durable Objects (Agents SDK), Workers AI, Secrets Store, Workers Logs**, as before; **Cron Triggers**
-  only if you give the autonomous agent a schedule.
+* **Durable Objects (Agents SDK), Workers AI, Secrets Store and Workers Logs** run the agents;
+  **Cron Triggers** only if you give the autonomous agent a schedule.
 
 ## Edge authorizer: API Shield JWT validation
 
-The closest thing to AgentCore's authorizer: Cloudflare verifies the Entra token at the edge and a
-WAF custom rule blocks (or logs) requests without a valid token **for this API**.
+Cloudflare verifies the Entra token at the edge, before the Worker runs, and a WAF custom rule blocks
+(or logs) requests without a valid token **for this API**.
 
 * **Checks:** signature against keys you upload, `exp` and `nbf` (60 s tolerance). The token
   configuration does not check `iss` or `aud`; the custom rule does, with

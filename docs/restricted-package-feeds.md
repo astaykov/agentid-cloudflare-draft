@@ -30,7 +30,8 @@ PowerShell Gallery.
 
 `npm install` stops at the first package it cannot get, so a mirror with three gaps costs three
 attempts. The project's own check asks your configured registry (your `.npmrc`, with its
-authentication) about everything at once:
+authentication) about everything at once. Like every command in this sample, run it from the
+project root (the folder with `package.json`):
 
 ```bash
 npm run check:feed                                   # the registry npm is configured for
@@ -47,11 +48,11 @@ It needs no packages (it only runs `npm view`), so it works before the first ins
 3. Wrangler's native pieces for your machine: `@cloudflare/workerd-<platform>`,
    `@esbuild/<platform>` and `@img/sharp-<platform>`, plus miniflare's dependencies.
 
-Example: the range an early copy of this sample shipped with, against a full mirror:
+Example: an out-of-date range for `@cloudflare/workers-types`, against a full mirror:
 
 ```text
 package.json
-  ok       @azure/msal-node 7.2.2  (^7.1.1)
+  ok       @azure/msal-node 7.2.1  (^7.1.1)
   NO MATCH @cloudflare/workers-types  (^4.20260901.0)
            Nothing in ^4.20260901.0 exists here; the newest version is 5.20261117.1, a newer major. The range in package.json is out of date.
   ...
@@ -91,7 +92,9 @@ registry=https://<your-mirror>/npm/registry/
 always-auth=true
 ```
 
-`.npmrc.example` has Azure Artifacts, Artifactory and Nexus forms. Authenticate the way your
+The file goes in the project root, next to `package.json` (copy `.npmrc.example` there); npm
+applies it to every command you run in the project. `.npmrc.example` has Azure Artifacts,
+Artifactory and Nexus forms. Authenticate the way your
 organisation prescribes (for Azure Artifacts, the credential provider or a PAT).
 
 ## Things that try to reach the public internet
@@ -143,7 +146,7 @@ protocol updates.
 **`@cloudflare/workers-types` not mirrored (or too old for Wrangler's peer range).** Remove it from
 `devDependencies`. Wrangler does not type-check, so `dev` and `deploy` are unaffected; only
 `npm run typecheck` needs runtime types. Wrangler can generate them instead, which is what
-Cloudflare recommends for Worker projects:
+Cloudflare recommends for Worker projects. From the project root:
 
 ```bash
 npx wrangler types --include-env=false -c workers/interactive/wrangler.jsonc

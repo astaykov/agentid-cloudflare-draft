@@ -1,8 +1,7 @@
 /**
- * Cloudflare API Shield JWT validation for Microsoft Entra tokens: the edge
- * "authorizer", the closest Cloudflare counterpart of an AWS API Gateway /
- * AgentCore JWT authorizer. Requests without a valid Entra token for the API
- * are stopped before the Worker runs. Enterprise plan with API Shield only.
+ * Cloudflare API Shield JWT validation for Microsoft Entra tokens: an edge
+ * authorizer. Requests without a valid Entra token for the API are stopped
+ * before the Worker runs. Enterprise plan with API Shield only.
  *
  * What the edge checks (token configuration): signature against the keys we
  * upload, exp and nbf (60 s tolerance). What our WAF custom rule adds: issuer,
